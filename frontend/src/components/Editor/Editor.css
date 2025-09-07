@@ -1,0 +1,250 @@
+.editor-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #ecf0f1;
+}
+
+.editor-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.preview-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  gap: 1rem;
+  background: #2c3e50;
+}
+
+.video-container {
+  background: #1a2530;
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.video-container video {
+  max-width: 100%;
+  max-height: 300px;
+  border-radius: 8px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+}
+
+.canvas-container {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  border: 3px solid #3498db;
+}
+
+.canvas-container .konvajs-content {
+  border-radius: 10px;
+}
+
+.properties-panel {
+  width: 300px;
+  padding: 1rem;
+  background: white;
+  border-left: 1px solid #bdc3c7;
+  overflow-y: auto;
+  box-shadow: -4px 0 8px rgba(0, 0, 0, 0.1);
+}
+
+.properties-panel h3 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #3498db;
+}
+
+.property-group {
+  margin-bottom: 1.5rem;
+}
+
+.property-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.property-group input[type="text"],
+.property-group input[type="range"],
+.property-group input[type="color"],
+.property-group select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #bdc3c7;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.property-group input[type="range"] {
+  padding: 0;
+  background: #ecf0f1;
+  height: 6px;
+}
+
+.property-group input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #3498db;
+  cursor: pointer;
+  border: 2px solid white;
+}
+
+.property-group input[type="color"] {
+  height: 40px;
+  cursor: pointer;
+}
+
+.property-group span {
+  display: inline-block;
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: #7f8c8d;
+}
+
+.property-actions {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #bdc3c7;
+}
+
+.delete-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.3s ease;
+}
+
+.delete-btn:hover {
+  background: #c0392b;
+}
+
+.editor-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #7f8c8d;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #ecf0f1;
+  border-top: 4px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Enhanced toolbar styles */
+.tool-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.zoom-slider {
+  width: 100px;
+  background: #34495e;
+  border-radius: 10px;
+  height: 6px;
+}
+
+.zoom-slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #3498db;
+  cursor: pointer;
+  border: 2px solid white;
+}
+
+.composition-select {
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #34495e;
+  background: #2c3e50;
+  color: white;
+  cursor: pointer;
+}
+
+.color-picker-input {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+  .editor-content {
+    flex-direction: column;
+  }
+  
+  .properties-panel {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid #bdc3c7;
+    order: -1;
+  }
+  
+  .preview-area {
+    padding: 0.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .editor-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .toolbar-left,
+  .toolbar-center,
+  .toolbar-right {
+    justify-content: center;
+  }
+  
+  .properties-panel {
+    padding: 0.5rem;
+  }
+  
+  .property-group {
+    margin-bottom: 1rem;
+  }
+  
+  .video-container {
+    padding: 0.5rem;
+  }
+  
+  .video-container video {
+    max-height: 200px;
+  }
+}
