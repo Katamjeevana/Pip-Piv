@@ -1,0 +1,90 @@
+.properties-panel {
+  width: 300px;
+  background: white;
+  border-left: 1px solid #e5e7eb;
+  padding: 16px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.properties-panel h3 {
+  margin: 0 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 1.2rem;
+}
+
+.property-group {
+  margin-bottom: 16px;
+}
+
+.property-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  font-size: 14px;
+  color: #374151;
+}
+
+.property-group input[type="text"],
+.property-group input[type="number"],
+.property-group select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.property-group input[type="range"] {
+  width: 100%;
+  margin: 8px 0;
+}
+
+.property-group input[type="color"] {
+  width: 40px;
+  height: 40px;
+  padding: 2px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.color-group {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.color-group .property-group {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.property-actions {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.delete-btn {
+  width: 100%;
+  padding: 10px 16px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.delete-btn:hover {
+  background: #dc2626;
+}
+
+.delete-btn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}

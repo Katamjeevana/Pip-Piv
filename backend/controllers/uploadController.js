@@ -2,12 +2,14 @@
 const Media = require('../models/Media');
 const path = require('path');
 
+// backend/controllers/uploadController.js
+// In the uploadFiles function:
 exports.uploadFiles = async (req, res) => {
   try {
     console.log('Upload request received - Body:', req.body);
     console.log('Upload request received - Files:', req.files);
     
-    const { mediaId } = req.body;
+    const { mediaId, isBackground } = req.body;
     
     if (!mediaId) {
       return res.status(400).json({ error: 'Media ID is required' });
@@ -24,6 +26,7 @@ exports.uploadFiles = async (req, res) => {
     }
     
     let uploadedFiles = [];
+    let fileIndex = media.mediaFiles.length;
     
     // Process image files
     if (req.files && req.files['image']) {
@@ -32,10 +35,17 @@ exports.uploadFiles = async (req, res) => {
           type: 'image',
           filename: imageFile.filename,
           url: `/uploads/images/${imageFile.filename}`,
-          isBackground: req.body.isBackground === 'true' || media.mediaFiles.length === 0 // First image is background if not specified
+          isBackground: isBackground === 'true',
+          // Add position and size properties as numbers
+          x: 50 + fileIndex * 30,
+          y: 50 + fileIndex * 30,
+          width: 200,
+          height: 150,
+          rotation: 0
         };
         media.mediaFiles.push(newMediaFile);
         uploadedFiles.push(newMediaFile);
+        fileIndex++;
         console.log('Image file added:', imageFile.filename);
       }
     }
@@ -47,10 +57,17 @@ exports.uploadFiles = async (req, res) => {
           type: 'video',
           filename: videoFile.filename,
           url: `/uploads/videos/${videoFile.filename}`,
-          isBackground: false // Videos can't be background
+          isBackground: false,
+          // Add position and size properties as numbers
+          x: 50,
+          y: 50,
+          width: 400,
+          height: 300,
+          rotation: 0
         };
         media.mediaFiles.push(newMediaFile);
         uploadedFiles.push(newMediaFile);
+        fileIndex++;
         console.log('Video file added:', videoFile.filename);
       }
     }
@@ -62,6 +79,7 @@ exports.uploadFiles = async (req, res) => {
     const updatedMedia = await media.save();
     console.log('Total media files now:', updatedMedia.mediaFiles.length);
     
+    // Return the updated media with all files
     res.json(updatedMedia);
   } catch (error) {
     console.error('Upload error details:', error);

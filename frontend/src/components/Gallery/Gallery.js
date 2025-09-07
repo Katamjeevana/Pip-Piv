@@ -3,9 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { mediaAPI } from '../../services/api';
 import './Gallery.css';
 
-const Gallery = ({ onEdit }) => {
+const Gallery = ({ onEdit, loading: externalLoading }) => {
   const [compositions, setCompositions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [internalLoading, setInternalLoading] = useState(true);
 
   useEffect(() => {
     fetchCompositions();
@@ -13,13 +13,27 @@ const Gallery = ({ onEdit }) => {
 
   const fetchCompositions = async () => {
     try {
+      setInternalLoading(true);
       const response = await mediaAPI.getAll();
       console.log('Fetched compositions:', response.data);
+      
+      // Debug: Check if elements exist in each composition
+      response.data.forEach((comp, index) => {
+        console.log(`Composition ${index}:`, {
+          title: comp.title,
+          elementsCount: comp.elements ? comp.elements.length : 0,
+          elements: comp.elements,
+          hasTextElements: comp.elements ? comp.elements.filter(el => el && el.type === 'text').length > 0 : false,
+          textElementsCount: comp.elements ? comp.elements.filter(el => el && el.type === 'text').length : 0,
+          mediaFiles: comp.mediaFiles ? comp.mediaFiles.map(f => ({...f, url: f.url})) : []
+        });
+      });
+      
       setCompositions(response.data);
     } catch (error) {
       console.error('Error fetching compositions:', error);
     } finally {
-      setLoading(false);
+      setInternalLoading(false);
     }
   };
 
@@ -35,33 +49,66 @@ const Gallery = ({ onEdit }) => {
     }
   };
 
+  // Function to properly format image URL
+  const getImageUrl = (url) => {
+    if (!url) return '';
+    
+    // If URL already starts with http, return as is
+    if (url.startsWith('http')) {
+      return url;
+    }
+    
+    // If URL starts with /uploads, add the base URL
+    if (url.startsWith('/uploads')) {
+      return `http://localhost:5000${url}`;
+    }
+    
+    // For any other case, try to construct the URL
+    return `http://localhost:5000/uploads/${url}`;
+  };
+
   const renderMediaPreview = (composition) => {
+    // Add null check for mediaFiles and filter out any null values or files without type
     if (!composition.mediaFiles || composition.mediaFiles.length === 0) {
       return <div className="no-media">No media</div>;
     }
 
-    // Get the first image for preview
-    const firstImage = composition.mediaFiles.find(file => file.type === 'image');
+    // Filter out null values and files that don't have a type property
+    const validMediaFiles = composition.mediaFiles.filter(file => 
+      file !== null && file !== undefined && file.type !== null && file.type !== undefined
+    );
     
-    if (firstImage) {
-      const imageUrl = `http://localhost:5000${firstImage.url}`;
+    if (validMediaFiles.length === 0) {
+      return <div className="no-media">No media</div>;
+    }
+
+    // Get the first image for preview - add additional safety check
+    const firstImage = validMediaFiles.find(file => file.type && file.type === 'image');
+    
+    if (firstImage && firstImage.url) {
+      const imageUrl = getImageUrl(firstImage.url);
+      console.log('Image URL:', imageUrl); // Debug log
       
       return (
         <div className="single-media-preview">
           <img 
             src={imageUrl} 
-            alt={composition.title}
+            alt={composition.title || 'Composition preview'}
             onError={(e) => {
+              console.error('Image failed to load:', imageUrl); // Debug log
               e.target.style.display = 'none';
               e.target.parentElement.innerHTML = '<div class="no-media">Image not found</div>';
             }}
+            onLoad={() => console.log('Image loaded successfully:', imageUrl)} // Debug log
           />
-          {/* Show text elements as badges */}
-          {composition.elements && composition.elements.filter(el => el.type === 'text').length > 0 && (
-            <span className="text-badge">Text: {composition.elements.filter(el => el.type === 'text').length}</span>
+          {/* Show text elements as badges - enhanced debugging */}
+          {composition.elements && composition.elements.filter(el => el && el.type === 'text').length > 0 && (
+            <span className="text-badge" title={`Text elements: ${composition.elements.filter(el => el && el.type === 'text').length}`}>
+              📝 {composition.elements.filter(el => el && el.type === 'text').length}
+            </span>
           )}
-          {composition.mediaFiles.length > 1 && (
-            <span className="media-badge">+{composition.mediaFiles.length - 1}</span>
+          {validMediaFiles.length > 1 && (
+            <span className="media-badge">+{validMediaFiles.length - 1}</span>
           )}
         </div>
       );
@@ -69,6 +116,8 @@ const Gallery = ({ onEdit }) => {
 
     return <div className="no-media">No image available</div>;
   };
+
+  const loading = externalLoading || internalLoading;
 
   if (loading) {
     return (
@@ -116,13 +165,20 @@ const Gallery = ({ onEdit }) => {
               </div>
               
               <div className="composition-info">
-                <h4>{composition.title}</h4>
-                <p>{composition.compositionType} • {new Date(composition.createdAt).toLocaleDateString()}</p>
+                <h4>{composition.title || 'Untitled Composition'}</h4>
+                <p>{composition.compositionType || 'custom'} • {composition.createdAt ? new Date(composition.createdAt).toLocaleDateString() : 'Unknown date'}</p>
                 {composition.mediaFiles && (
-                  <small>{composition.mediaFiles.length} media file(s)</small>
+                  <small>{composition.mediaFiles.filter(file => file !== null && file !== undefined && file.type).length} media file(s)</small>
                 )}
                 {composition.elements && composition.elements.length > 0 && (
-                  <small>• {composition.elements.length} element(s)</small>
+                  <small>
+                    • {composition.elements.filter(el => el !== null).length} element(s)
+                    {composition.elements.filter(el => el && el.type === 'text').length > 0 && (
+                      <span style={{color: 'blue', marginLeft: '5px'}}>
+                        ({composition.elements.filter(el => el && el.type === 'text').length} text)
+                      </span>
+                    )}
+                  </small>
                 )}
               </div>
             </div>

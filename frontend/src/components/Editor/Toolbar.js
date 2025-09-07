@@ -1,3 +1,4 @@
+// frontend/src/components/Editor/Toolbar.js
 import React from 'react';
 import './Toolbar.css';
 

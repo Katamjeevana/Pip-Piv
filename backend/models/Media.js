@@ -21,14 +21,12 @@ const mediaSchema = new mongoose.Schema({
     },
     filename: String,
     url: String,
-    position: {
-      x: { type: Number, default: 0 },
-      y: { type: Number, default: 0 }
-    },
-    size: {
-      width: { type: Number, default: 200 },
-      height: { type: Number, default: 150 }
-    },
+    // Direct properties for editor (not nested)
+    x: { type: Number, default: 0 },
+    y: { type: Number, default: 0 },
+    width: { type: Number, default: 200 },
+    height: { type: Number, default: 150 },
+    rotation: { type: Number, default: 0 },
     isBackground: { type: Boolean, default: false }
   }],
   compositionType: {

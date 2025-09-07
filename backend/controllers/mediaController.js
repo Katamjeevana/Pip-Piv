@@ -1,4 +1,4 @@
-const Media = require('../models/Media');
+const Media = require('../models/Media'); // ADD THIS IMPORT
 const fs = require('fs');
 const path = require('path');
 
@@ -27,7 +27,7 @@ exports.getMedia = async (req, res) => {
   }
 };
 
-// Create new media composition - KEEP ONLY THIS ONE
+// Create new media composition
 exports.createMedia = async (req, res) => {
   try {
     console.log('Create media request body:', req.body);
@@ -56,11 +56,12 @@ exports.createMedia = async (req, res) => {
   }
 };
 
-// Update media composition
+// Update media composition - KEEP ONLY THIS ONE
 // backend/controllers/mediaController.js
-// ... other imports and functions ...
+// In the updateMedia function, ensure proper data structure:
+// backend/controllers/mediaController.js
+// Update the updateMedia function:
 
-// Update media composition
 exports.updateMedia = async (req, res) => {
   try {
     console.log('Update media request:', req.params.id, req.body);
@@ -103,7 +104,7 @@ exports.updateMedia = async (req, res) => {
       }
       
       // Ensure all numeric values are valid numbers
-      const numericProps = ['x', 'y', 'width', 'height', 'fontSize', 'strokeWidth', 'shadowBlur', 'opacity'];
+      const numericProps = ['x', 'y', 'width', 'height', 'fontSize', 'strokeWidth', 'shadowBlur', 'opacity', 'rotation'];
       numericProps.forEach(prop => {
         if (sanitized[prop] !== undefined) {
           sanitized[prop] = Number(sanitized[prop]) || 0;
@@ -124,12 +125,34 @@ exports.updateMedia = async (req, res) => {
     // Ensure all elements have proper numeric values
     const sanitizedElements = (elements || []).map(sanitizeElement);
     
+    // Sanitize media files - ensure all numeric values are proper numbers
+    const sanitizedMediaFiles = (mediaFiles || []).map((file, index) => {
+      return {
+        ...file,
+        // Ensure numeric values are proper numbers
+        x: Number(file.x) || 50 + index * 30,
+        y: Number(file.y) || 50 + index * 30,
+        width: Number(file.width) || 200,
+        height: Number(file.height) || 150,
+        rotation: Number(file.rotation) || 0,
+        // Remove position and size objects if they exist
+        position: undefined,
+        size: undefined
+      };
+    });
+    
     const updates = {
       elements: sanitizedElements,
       backgroundColor: backgroundColor || '#ffffff',
       compositionType: compositionType || 'custom',
-      mediaFiles: mediaFiles || []
+      mediaFiles: sanitizedMediaFiles
     };
+    
+    console.log('Updating with sanitized elements:', sanitizedElements);
+    console.log('Updating with sanitized media files:', sanitizedMediaFiles);
+    // Add these console logs in the updateMedia function:
+console.log('Raw elements from request:', elements);
+console.log('Sanitized elements:', sanitizedElements);
     
     const media = await Media.findByIdAndUpdate(
       req.params.id,
@@ -201,7 +224,12 @@ exports.addMediaToComposition = async (req, res) => {
         type: fileType || detectedFileType,
         filename: mediaFile.filename,
         url: `/uploads/${detectedFileType}s/${mediaFile.filename}`,
-        isBackground: isBackground === 'true'
+        isBackground: isBackground === 'true',
+        x: 50, // Add default position
+        y: 50,
+        width: 200, // Add default size
+        height: 150,
+        rotation: 0
       };
       
       // Initialize mediaFiles array if it doesn't exist

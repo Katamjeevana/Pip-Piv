@@ -1,10 +1,11 @@
 // frontend/src/components/Editor/Editor.js
-import React, { useRef, useState, useEffect } from 'react';
-import { Stage, Layer, Image, Text as KonvaText, Transformer, Rect } from 'react-konva';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { Stage, Layer, Image as KonvaImage, Text as KonvaText, Transformer, Rect } from 'react-konva';
 import useImage from 'use-image';
 import Toolbar from './Toolbar';
 import PropertiesPanel from './PropertiesPanel';
 import AddMediaModal from './AddMediaModal';
+import ImageElement from './ImageElement';
 import { mediaAPI, uploadAPI } from '../../services/api';
 import './Editor.css';
 
@@ -27,16 +28,10 @@ const Editor = ({ media, onSave, onBack }) => {
   const transformerRef = useRef();
   const videoRef = useRef();
 
-  // Load images
+  // Load background image
   const backgroundImageFile = mediaFiles.find(f => f.isBackground && f.type === 'image');
-  const foregroundImageFile = mediaFiles.find(f => !f.isBackground && f.type === 'image');
-  
   const [backgroundImage] = useImage(
     backgroundImageFile ? `${BASE_URL}${backgroundImageFile.url}` : '', 
-    'anonymous'
-  );
-  const [foregroundImage] = useImage(
-    foregroundImageFile ? `${BASE_URL}${foregroundImageFile.url}` : '', 
     'anonymous'
   );
 
@@ -76,7 +71,7 @@ const Editor = ({ media, onSave, onBack }) => {
     }
     
     // Ensure all numeric values are valid numbers
-    const numericProps = ['x', 'y', 'width', 'height', 'fontSize', 'strokeWidth', 'shadowBlur', 'opacity'];
+    const numericProps = ['x', 'y', 'width', 'height', 'fontSize', 'strokeWidth', 'shadowBlur', 'opacity', 'rotation'];
     numericProps.forEach(prop => {
       if (sanitized[prop] !== undefined) {
         sanitized[prop] = Number(sanitized[prop]) || 0;
@@ -101,10 +96,30 @@ const Editor = ({ media, onSave, onBack }) => {
       
       // Sanitize all elements to ensure they have proper values
       const sanitizedElements = (media.elements || []).map(sanitizeElement);
+      
+      // Sanitize media files to ensure proper numeric values
+      const sanitizedMediaFiles = (media.mediaFiles || []).map((file, index) => {
+        // Ensure URL has proper format
+        const url = file.url ? (file.url.startsWith('http') ? file.url : `${BASE_URL}${file.url}`) : '';
+        
+        return {
+          ...file,
+          url,
+          x: Number(file.x) || Number(file.position?.x) || 50 + index * 30,
+          y: Number(file.y) || Number(file.position?.y) || 50 + index * 30,
+          width: Number(file.width) || Number(file.size?.width) || 200,
+          height: Number(file.height) || Number(file.size?.height) || 150,
+          rotation: Number(file.rotation) || 0
+        };
+      });
+      
+      console.log('Loaded elements:', sanitizedElements);
+      console.log('Loaded mediaFiles:', sanitizedMediaFiles);
+      
       setElements(sanitizedElements);
       setBackgroundColor(media.backgroundColor || '#ffffff');
       setCompositionType(media.compositionType || 'custom');
-      setMediaFiles(media.mediaFiles || []);
+      setMediaFiles(sanitizedMediaFiles);
     }
   }, [media]);
 
@@ -123,20 +138,21 @@ const Editor = ({ media, onSave, onBack }) => {
   // Enhanced editing functions
   const addText = () => {
     const newText = sanitizeElement({
-      id: `text-${Date.now()}`,
+      id: `element-${Date.now()}`,
       type: 'text',
       text: 'Double click to edit',
       x: 100,
       y: 100
     });
     
+    console.log('Adding text element:', newText);
     setElements([...elements, newText]);
     setSelectedId(newText.id);
   };
 
   const addShape = (shapeType) => {
     const newShape = sanitizeElement({
-      id: `shape-${Date.now()}`,
+      id: `element-${Date.now()}`,
       type: shapeType,
       x: 150,
       y: 150
@@ -164,7 +180,22 @@ const Editor = ({ media, onSave, onBack }) => {
       const response = await uploadAPI.upload(formData);
       console.log('Upload response:', response.data);
       
-      setMediaFiles(response.data.mediaFiles);
+      const newMediaFiles = response.data.mediaFiles.map((file, index) => {
+        // Ensure URL has proper format
+        const url = file.url ? (file.url.startsWith('http') ? file.url : `${BASE_URL}${file.url}`) : '';
+        
+        return {
+          ...file,
+          url,
+          x: Number(file.x) || Number(file.position?.x) || 50 + index * 30,
+          y: Number(file.y) || Number(file.position?.y) || 50 + index * 30,
+          width: Number(file.width) || Number(file.size?.width) || 200,
+          height: Number(file.height) || Number(file.size?.height) || 150,
+          rotation: Number(file.rotation) || 0
+        };
+      });
+      
+      setMediaFiles(newMediaFiles);
       setShowAddMediaModal(false);
       
       // Show success message
@@ -211,7 +242,13 @@ const Editor = ({ media, onSave, onBack }) => {
 
   const deleteSelected = () => {
     if (selectedId) {
-      setElements(elements.filter(el => el.id !== selectedId));
+      if (selectedId.startsWith('element-')) {
+        setElements(elements.filter(el => el.id !== selectedId));
+      } else if (selectedId.startsWith('image-')) {
+        const index = parseInt(selectedId.split('-')[1]);
+        setMediaFiles(mediaFiles.filter((_, i) => i !== index));
+      }
+      
       setSelectedId(null);
     }
   };
@@ -235,19 +272,16 @@ const Editor = ({ media, onSave, onBack }) => {
     const node = e.target;
     const { x, y } = node;
     
-    setElements(elements.map(el => 
-      el.id === id ? { ...el, x: x || 0, y: y || 0 } : el
-    ));
-  };
-
-  // Handle element drag move to update state in real-time
-  const handleDragMove = (e, id) => {
-    const node = e.target;
-    const { x, y } = node;
-    
-    setElements(elements.map(el => 
-      el.id === id ? { ...el, x: x || 0, y: y || 0 } : el
-    ));
+    if (id.startsWith('element-')) {
+      setElements(elements.map(el => 
+        el.id === id ? { ...el, x: x || 0, y: y || 0 } : el
+      ));
+    } else if (id.startsWith('image-')) {
+      const index = parseInt(id.split('-')[1]);
+      setMediaFiles(mediaFiles.map((file, i) => 
+        i === index ? { ...file, x: x || 0, y: y || 0 } : file
+      ));
+    }
   };
 
   // Handle element transform events to update state
@@ -255,72 +289,87 @@ const Editor = ({ media, onSave, onBack }) => {
     const node = e.target;
     const scaleX = node.scaleX();
     const scaleY = node.scaleY();
+    const rotation = node.rotation();
     
     // Reset scale for next transformation
     node.scaleX(1);
     node.scaleY(1);
     
-    setElements(elements.map(el => {
-      if (el.id === id) {
-        const updatedElement = { 
-          ...el, 
-          x: node.x() || 0,
-          y: node.y() || 0
-        };
-        
-        if (el.type !== 'text') {
-          updatedElement.width = Math.max(5, (el.width || 100) * scaleX);
-          updatedElement.height = Math.max(5, (el.height || 100) * scaleY);
-        } else {
-          updatedElement.fontSize = Math.max(12, (el.fontSize || 24) * scaleX);
+    if (id.startsWith('element-')) {
+      setElements(elements.map(el => {
+        if (el.id === id) {
+          const updatedElement = { 
+            ...el, 
+            x: node.x() || 0,
+            y: node.y() || 0,
+            rotation: rotation || 0
+          };
+          
+          if (el.type !== 'text') {
+            updatedElement.width = Math.max(5, (el.width || 100) * scaleX);
+            updatedElement.height = Math.max(5, (el.height || 100) * scaleY);
+          } else {
+            updatedElement.fontSize = Math.max(12, (el.fontSize || 24) * scaleX);
+          }
+          
+          return sanitizeElement(updatedElement);
         }
-        
-        return sanitizeElement(updatedElement);
-      }
-      return el;
-    }));
-  };
-
-  // Handle image drag events to update mediaFiles state
-  const handleImageDragEnd = (fileIndex, e) => {
-    const node = e.target;
-    const { x, y } = node;
-    
-    setMediaFiles(mediaFiles.map((file, index) => 
-      index === fileIndex ? { ...file, x: x || 0, y: y || 0 } : file
-    ));
-  };
-
-  // Handle image drag move to update state in real-time
-  const handleImageDragMove = (fileIndex, e) => {
-    const node = e.target;
-    const { x, y } = node;
-    
-    setMediaFiles(mediaFiles.map((file, index) => 
-      index === fileIndex ? { ...file, x: x || 0, y: y || 0 } : file
-    ));
+        return el;
+      }));
+    } else if (id.startsWith('image-')) {
+      const index = parseInt(id.split('-')[1]);
+      setMediaFiles(mediaFiles.map((file, i) => {
+        if (i === index) {
+          return {
+            ...file,
+            x: node.x() || 0,
+            y: node.y() || 0,
+            width: Math.max(5, (file.width || 200) * scaleX),
+            height: Math.max(5, (file.height || 150) * scaleY),
+            rotation: rotation || 0
+          };
+        }
+        return file;
+      }));
+    }
   };
 
   const handleSave = async () => {
     try {
       // Ensure all elements have proper numeric values to avoid NaN errors
       const sanitizedElements = elements.map(sanitizeElement);
+      const sanitizedMediaFiles = mediaFiles.map(file => ({
+        ...file,
+        x: file.x || 0,
+        y: file.y || 0,
+        width: file.width || 200,
+        height: file.height || 150,
+        rotation: file.rotation || 0
+      }));
       
       console.log('Saving elements:', sanitizedElements);
-      console.log('Saving mediaFiles:', mediaFiles);
+      console.log('Saving mediaFiles:', sanitizedMediaFiles);
+      
+      // Debug: Check text elements specifically
+      const textElements = sanitizedElements.filter(el => el.type === 'text');
+      console.log('Text elements to save:', textElements);
       
       const updatedMedia = await mediaAPI.update(media._id, {
         elements: sanitizedElements,
         backgroundColor,
         compositionType,
-        mediaFiles: mediaFiles.map(file => ({
-          ...file,
-          x: file.x || 0,
-          y: file.y || 0
-        }))
+        mediaFiles: sanitizedMediaFiles,
+        title: media.title || 'Untitled Composition'
       });
       
       console.log('Save response:', updatedMedia.data);
+      
+      // Debug: Check what elements were returned in the response
+      if (updatedMedia.data.elements) {
+        const returnedTextElements = updatedMedia.data.elements.filter(el => el && el.type === 'text');
+        console.log('Text elements in response:', returnedTextElements);
+      }
+      
       onSave(updatedMedia.data);
       alert('Composition saved successfully!');
     } catch (error) {
@@ -378,7 +427,7 @@ const Editor = ({ media, onSave, onBack }) => {
           
           <div className="canvas-container">
             <Stage
-              width={800}
+              width={1400}
               height={600}
               ref={stageRef}
               scaleX={zoomLevel}
@@ -393,39 +442,30 @@ const Editor = ({ media, onSave, onBack }) => {
               <Layer>
                 {/* Background image */}
                 {backgroundImage && (
-                  <Image
+                  <KonvaImage
                     image={backgroundImage}
-                    width={800}
+                    width={1400}
                     height={600}
                     x={0}
                     y={0}
                   />
                 )}
                 
-                {/* Foreground images as draggable elements */}
+                {/* Foreground images */}
                 {mediaFiles.filter(file => !file.isBackground && file.type === 'image').map((file, index) => {
-                  const fileIndex = mediaFiles.findIndex(f => f.url === file.url);
                   const elementId = `image-${index}`;
-                  const isSelected = selectedId === elementId;
                   
                   return (
-                    <React.Fragment key={`image-${index}`}>
-                      <Image
-                        id={elementId}
-                        image={foregroundImage}
-                        x={file.x || 50 + index * 50}
-                        y={file.y || 50 + index * 50}
-                        width={file.width || 200}
-                        height={file.height || 150}
-                        draggable={compositionType === 'custom'}
-                        cornerRadius={10}
-                        shadowBlur={10}
-                        shadowColor="rgba(0,0,0,0.5)"
-                        onDragEnd={(e) => handleImageDragEnd(fileIndex, e)}
-                        onDragMove={(e) => handleImageDragMove(fileIndex, e)}
-                        onClick={() => setSelectedId(elementId)}
-                      />
-                    </React.Fragment>
+                    <ImageElement
+                      key={`image-${index}`}
+                      file={file}
+                      elementId={elementId}
+                      index={index}
+                      compositionType={compositionType}
+                      onDragEnd={(e) => handleDragEnd(e, elementId)}
+                      onTransformEnd={(e) => handleTransformEnd(e, elementId)}
+                      onClick={() => setSelectedId(elementId)}
+                    />
                   );
                 })}
               </Layer>
@@ -451,6 +491,7 @@ const Editor = ({ media, onSave, onBack }) => {
                         shadowColor={safeElement.shadowColor}
                         shadowBlur={safeElement.shadowBlur}
                         shadowOffset={safeElement.shadowOffset}
+                        rotation={safeElement.rotation || 0}
                         draggable={safeElement.draggable}
                         opacity={safeElement.opacity}
                         onDblClick={() => {
@@ -462,7 +503,6 @@ const Editor = ({ media, onSave, onBack }) => {
                           }
                         }}
                         onDragEnd={(e) => handleDragEnd(e, safeElement.id)}
-                        onDragMove={(e) => handleDragMove(e, safeElement.id)}
                         onTransformEnd={(e) => handleTransformEnd(e, safeElement.id)}
                       />
                     );
@@ -478,11 +518,11 @@ const Editor = ({ media, onSave, onBack }) => {
                         fill={safeElement.fill}
                         stroke={safeElement.stroke}
                         strokeWidth={safeElement.strokeWidth}
+                        rotation={safeElement.rotation || 0}
                         draggable={safeElement.draggable}
                         opacity={safeElement.opacity}
                         cornerRadius={10}
                         onDragEnd={(e) => handleDragEnd(e, safeElement.id)}
-                        onDragMove={(e) => handleDragMove(e, safeElement.id)}
                         onTransformEnd={(e) => handleTransformEnd(e, safeElement.id)}
                       />
                     );
@@ -492,7 +532,7 @@ const Editor = ({ media, onSave, onBack }) => {
               </Layer>
               
               <Layer>
-                <Transformer ref={transformerRef} />
+                {selectedId && <Transformer ref={transformerRef} />}
               </Layer>
             </Stage>
           </div>
@@ -506,10 +546,7 @@ const Editor = ({ media, onSave, onBack }) => {
                 el.id === selectedElement.id ? { ...el, ...updates } : el
               ));
             }}
-            onDelete={() => {
-              setElements(elements.filter(el => el.id !== selectedElement.id));
-              setSelectedId(null);
-            }}
+            onDelete={deleteSelected}
           />
         )}
       </div>
